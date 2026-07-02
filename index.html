@@ -2082,12 +2082,16 @@ function loadData(){
   try { st = JSON.parse(raw); } catch(e){ console.warn('Stored data corrupt, reseeding'); return JSON.parse(JSON.stringify(seed)); }
   try {
     if(!Array.isArray(st.history)) st.history = [];
-    const have = new Set(st.history.map(function(w){ return w.week + '|' + w.date; }));
-    var added = false;
+    var changed = false;
+    // Seed data (freshly built from snapshots.json) is always authoritative for weeks it contains —
+    // replace any stale cached copy of that week instead of silently keeping old/wrong data around.
     (seed.history || []).forEach(function(w){
-      if(!have.has(w.week + '|' + w.date)){ st.history.push(JSON.parse(JSON.stringify(w))); added = true; }
+      const key = w.week + '|' + w.date;
+      const pos = st.history.findIndex(function(x){ return (x.week + '|' + x.date) === key; });
+      if(pos === -1){ st.history.push(JSON.parse(JSON.stringify(w))); changed = true; }
+      else if(JSON.stringify(st.history[pos]) !== JSON.stringify(w)){ st.history[pos] = JSON.parse(JSON.stringify(w)); changed = true; }
     });
-    if(added){
+    if(changed){
       st.history.sort(function(a,b){ return (b.date||'').localeCompare(a.date||''); });
       localStorage.setItem(STORAGE_KEY, JSON.stringify(st));
     }
